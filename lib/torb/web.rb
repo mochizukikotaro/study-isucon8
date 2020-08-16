@@ -104,6 +104,9 @@ module Torb
           end
 
           event['sheets'][sheet['rank']]['detail'].push(sheet)
+          sheet.delete('id')
+          sheet.delete('price')
+          sheet.delete('rank')
 
         end
 
