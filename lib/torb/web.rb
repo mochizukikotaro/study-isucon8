@@ -92,7 +92,6 @@ module Torb
         sheets = db.xquery(sql, event['id'])
         sheets.each do |sheet|
           event['sheets'][sheet['rank']]['price'] ||= event['price'] + sheet['price']
-          event['total'] += 1
           event['sheets'][sheet['rank']]['total'] += 1
 
           if sheet['reserved_at']
@@ -108,6 +107,7 @@ module Torb
 
         end
 
+        event['total'] = 1000
         event['public'] = event['public_fg']
         event['closed'] = event['closed_fg']
 
