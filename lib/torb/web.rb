@@ -101,13 +101,10 @@ module Torb
 
           event['sheets'][sheet['rank']]['detail'].push(sheet)
 
-          sheet.delete('id')
-          sheet.delete('price')
-          sheet.delete('rank')
         end
 
-        event['public'] = event.delete('public_fg')
-        event['closed'] = event.delete('closed_fg')
+        event['public'] = event['public_fg']
+        event['closed'] = event['closed_fg']
 
         event
       end
