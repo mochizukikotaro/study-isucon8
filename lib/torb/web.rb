@@ -267,10 +267,31 @@ module Torb
       user['recent_reservations'] = recent_reservations
       user['total_price'] = db.xquery('SELECT IFNULL(SUM(e.price + s.price), 0) AS total_price FROM reservations r INNER JOIN sheets s ON s.id = r.sheet_id INNER JOIN events e ON e.id = r.event_id WHERE r.user_id = ? AND r.canceled_at IS NULL', user['id']).first['total_price']
 
-      rows = db.xquery('SELECT event_id FROM reservations WHERE user_id = ? GROUP BY event_id ORDER BY MAX(IFNULL(canceled_at, reserved_at)) DESC LIMIT 5', user['id'])
-      recent_events = rows.map do |row|
-        event = get_event(row['event_id'])
-        event['sheets'].each { |_, sheet| sheet.delete('detail') }
+      sql = <<~SQL
+        SELECT event_id, sub.*
+        FROM reservations r
+        inner join (
+                select e.id, e.title, e.price, e.closed_fg AS closed, e.public_fg AS `public`, 1000 - count(event_id) AS remains, 1000 AS total,
+                sum(case when s.rank = 'S' then 1 else 0 end) as s_cnt,
+                sum(case when s.rank = 'A' then 1 else 0 end) as a_cnt,
+                sum(case when s.rank = 'B' then 1 else 0 end) as b_cnt,
+                sum(case when s.rank = 'C' then 1 else 0 end) as c_cnt
+                from events e
+                left outer join reservations r on r.event_id = e.id and r.canceled_at is null
+                left outer join sheets s on s.id = r.sheet_id
+            group by e.id
+            order by e.id asc
+        ) sub on sub.id = r.event_id
+        WHERE user_id = ? GROUP BY event_id ORDER BY MAX(IFNULL(canceled_at, reserved_at)) DESC LIMIT 5;
+      SQL
+      events = db.xquery(sql, user['id'])
+      recent_events = events.map do |event|
+        event['sheets'] = {
+          'S' => { 'total' => 50, 'remains' => 50 - event['s_cnt'], 'price' => event['price'] + 5000 },
+          'A' => { 'total' => 150, 'remains' => 150 - event['a_cnt'], 'price' => event['price'] + 3000 },
+          'B' => { 'total' => 300, 'remains' => 300 - event['b_cnt'], 'price' => event['price'] + 1000 },
+          'C' => { 'total' => 500, 'remains' => 500 - event['c_cnt'], 'price' => event['price'] + 0 },
+        }
         event
       end
       user['recent_events'] = recent_events
