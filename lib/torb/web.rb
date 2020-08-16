@@ -377,7 +377,30 @@ module Torb
 
     get '/admin/' do
       @administrator = get_login_administrator
-      @events = get_events(->(_) { true }) if @administrator
+      if @administrator
+        sql = <<~SQL
+        select e.id, e.title, e.price, 1000 - count(event_id) AS remains, 1000 AS total,
+        sum(case when s.rank = 'S' then 1 else 0 end) as s_cnt,
+        sum(case when s.rank = 'A' then 1 else 0 end) as a_cnt,
+        sum(case when s.rank = 'B' then 1 else 0 end) as b_cnt,
+        sum(case when s.rank = 'C' then 1 else 0 end) as c_cnt
+        from events e
+        left outer join reservations r on r.event_id = e.id and r.canceled_at is null
+        left outer join sheets s on s.id = r.sheet_id
+        group by e.id
+        order by e.id asc
+        SQL
+        events = db.xquery(sql)
+        @events = events.map do |event|
+          event['sheets'] = {
+            'S' => { 'total' => 50, 'remains' => 50 - event['s_cnt'], 'price' => event['price'] + 5000 },
+            'A' => { 'total' => 150, 'remains' => 150 - event['a_cnt'], 'price' => event['price'] + 3000 },
+            'B' => { 'total' => 300, 'remains' => 300 - event['b_cnt'], 'price' => event['price'] + 1000 },
+            'C' => { 'total' => 500, 'remains' => 500 - event['c_cnt'], 'price' => event['price'] + 0 },
+          }
+          event
+        end
+      end
 
       erb :admin
     end
