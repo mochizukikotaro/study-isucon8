@@ -212,14 +212,25 @@ module Torb
         halt_with_error 403, 'forbidden'
       end
 
-      rows = db.xquery('SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num FROM reservations r INNER JOIN sheets s ON s.id = r.sheet_id WHERE r.user_id = ? ORDER BY IFNULL(r.canceled_at, r.reserved_at) DESC LIMIT 5', user['id'])
+      sql = <<~SQL
+        SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num, s.price AS sheet_price, 
+          e.id AS e_id, e.title AS e_title, e.closed_fg AS e_closed, e.public_fg AS e_public, e.price AS e_price
+        FROM reservations r 
+        INNER JOIN sheets s ON s.id = r.sheet_id 
+        INNER JOIN events e ON e.id = r.event_id
+        WHERE r.user_id = ? 
+        ORDER BY IFNULL(r.canceled_at, r.reserved_at) 
+        DESC LIMIT 5  
+      SQL
+      rows = db.xquery(sql, user['id'])
       recent_reservations = rows.map do |row|
-        event = get_event(row['event_id'])
-        price = event['sheets'][row['sheet_rank']]['price']
-        event.delete('sheets')
-        event.delete('total')
-        event.delete('remains')
-
+        event = {
+          id: row['e_id'],
+          title: row['e_title'],
+          closed: row['e_closed'],
+          public: row['e_public'],
+        }
+        price = row['sheet_price'] + row['e_price']
         {
           id:          row['id'],
           event:       event,
