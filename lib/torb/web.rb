@@ -83,8 +83,13 @@ module Torb
         %w[S A B C].each do |rank|
           event['sheets'][rank] = { 'total' => 0, 'remains' => 0, 'detail' => [] }
         end
-
-        sheets = db.xquery('select * from sheets s left outer join reservations r on r.sheet_id = s.id and event_id = ? and canceled_at is null order by `rank`, num', event['id'])
+        sql =<<~SQL
+          select * from sheets s 
+            left outer join reservations r 
+              on r.sheet_id = s.id and event_id = ? and canceled_at is null 
+          order by `rank`, num
+        SQL
+        sheets = db.xquery(sql, event['id'])
         sheets.each do |sheet|
           event['sheets'][sheet['rank']]['price'] ||= event['price'] + sheet['price']
           event['total'] += 1
