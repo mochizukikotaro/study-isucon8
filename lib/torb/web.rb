@@ -272,19 +272,19 @@ module Torb
         FROM reservations r
         inner join (
                 select e.id, e.title, e.price, e.closed_fg AS closed, e.public_fg AS `public`, 1000 - count(event_id) AS remains, 1000 AS total,
-                sum(case when s.rank = 'S' then 1 else 0 end) as s_cnt,
-                sum(case when s.rank = 'A' then 1 else 0 end) as a_cnt,
-                sum(case when s.rank = 'B' then 1 else 0 end) as b_cnt,
-                sum(case when s.rank = 'C' then 1 else 0 end) as c_cnt
+                sum(case when r.sheet_id <= 50 then 1 else 0 end) as s_cnt,
+                sum(case when r.sheet_id <= 200 and r.sheet_id > 50 then 1 else 0 end) as a_cnt,
+                sum(case when r.sheet_id <= 500 and r.sheet_id > 200 then 1 else 0 end) as b_cnt,
+                sum(case when r.sheet_id > 500 then 1 else 0 end) as c_cnt
                 from events e
                 left outer join reservations r on r.event_id = e.id and r.canceled_at is null
-                left outer join sheets s on s.id = r.sheet_id
+            where e.id in (select * from (select event_id from reservations where user_id = ? group by event_id ORDER BY MAX(IFNULL(canceled_at, reserved_at)) desc limit 5) as t)
             group by e.id
             order by e.id asc
         ) sub on sub.id = r.event_id
         WHERE user_id = ? GROUP BY event_id ORDER BY MAX(IFNULL(canceled_at, reserved_at)) DESC LIMIT 5;
       SQL
-      events = db.xquery(sql, user['id'])
+      events = db.xquery(sql, user['id'], user['id'])
       recent_events = events.map do |event|
         event['sheets'] = {
           'S' => { 'total' => 50, 'remains' => 50 - event['s_cnt'], 'price' => event['price'] + 5000 },
@@ -401,13 +401,12 @@ module Torb
       if @administrator
         sql = <<~SQL
         select e.id, e.title, e.price, 1000 - count(event_id) AS remains, 1000 AS total,
-        sum(case when s.rank = 'S' then 1 else 0 end) as s_cnt,
-        sum(case when s.rank = 'A' then 1 else 0 end) as a_cnt,
-        sum(case when s.rank = 'B' then 1 else 0 end) as b_cnt,
-        sum(case when s.rank = 'C' then 1 else 0 end) as c_cnt
+        sum(case when r.sheet_id <= 50 then 1 else 0 end) as s_cnt,
+        sum(case when r.sheet_id <= 200 and r.sheet_id > 50 then 1 else 0 end) as a_cnt,
+        sum(case when r.sheet_id <= 500 and r.sheet_id > 200 then 1 else 0 end) as b_cnt,
+        sum(case when r.sheet_id > 500 then 1 else 0 end) as c_cnt
         from events e
         left outer join reservations r on r.event_id = e.id and r.canceled_at is null
-        left outer join sheets s on s.id = r.sheet_id
         group by e.id
         order by e.id asc
         SQL
