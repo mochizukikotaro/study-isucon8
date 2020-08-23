@@ -479,12 +479,15 @@ module Torb
       closed = body_params['closed'] || false
       public = false if closed
 
-      event = get_event(event_id)
+      sql = <<~SQL
+        select * from events where id = ?
+      SQL
+      event = db.xquery(sql, event_id).first
       halt_with_error 404, 'not_found' unless event
 
-      if event['closed']
+      if event['closed_fg']
         halt_with_error 400, 'cannot_edit_closed_event'
-      elsif event['public'] && closed
+      elsif event['public_fg'] && closed
         halt_with_error 400, 'cannot_close_public_event'
       end
 
