@@ -304,13 +304,13 @@ module Torb
       login_name = body_params['login_name']
       password   = body_params['password']
 
-      user      = db.xquery('SELECT * FROM users WHERE login_name = ?', login_name).first
+      user      = db.xquery('SELECT id, nickname, pass_hash FROM users WHERE login_name = ?', login_name).first
       pass_hash = db.xquery('SELECT SHA2(?, 256) AS pass_hash', password).first['pass_hash']
       halt_with_error 401, 'authentication_failed' if user.nil? || pass_hash != user['pass_hash']
 
       session['user_id'] = user['id']
 
-      user = get_login_user
+      user.delete('pass_hash')
       user.to_json
     end
 
@@ -435,7 +435,6 @@ module Torb
 
       session['administrator_id'] = administrator['id']
 
-      administrator = get_login_administrator
       administrator.to_json
     end
 
