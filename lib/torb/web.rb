@@ -501,7 +501,6 @@ module Torb
     end
 
     get '/admin/api/reports/events/:id/sales', admin_login_required: true do |event_id|
-      event = get_event(event_id)
       sql = <<~SQL
         SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num, s.price AS sheet_price, e.price AS event_price 
         FROM reservations r 
@@ -511,11 +510,11 @@ module Torb
         ORDER BY reserved_at ASC
       SQL
 
-      reservations = db.xquery(sql, event['id'])
+      reservations = db.xquery(sql, event_id)
       reports = reservations.map do |reservation|
         {
           reservation_id: reservation['id'],
-          event_id:       event['id'],
+          event_id:       event_id,
           rank:           reservation['sheet_rank'],
           num:            reservation['sheet_num'],
           user_id:        reservation['user_id'],
