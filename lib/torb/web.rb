@@ -502,7 +502,10 @@ module Torb
 
     get '/admin/api/reports/events/:id/sales', admin_login_required: true do |event_id|
       sql = <<~SQL
-        SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num, s.price AS sheet_price, e.price AS event_price 
+        SELECT r.id, r.user_id, r.reserved_at,
+          date_format(r.reserved_at, "%Y-%m-%dT%TZ") as sold_at,
+          IFNULL(date_format(r.reserved_at, "%Y-%m-%dT%TZ"), '') as canceled_at,
+          s.rank AS sheet_rank, s.num AS sheet_num, s.price AS sheet_price, e.price AS event_price 
         FROM reservations r 
           INNER JOIN sheets s ON s.id = r.sheet_id 
           INNER JOIN events e ON e.id = r.event_id 
@@ -518,8 +521,8 @@ module Torb
           rank:           reservation['sheet_rank'],
           num:            reservation['sheet_num'],
           user_id:        reservation['user_id'],
-          sold_at:        reservation['reserved_at'].iso8601,
-          canceled_at:    reservation['canceled_at']&.iso8601 || '',
+          sold_at:        reservation['sold_at'],
+          canceled_at:    reservation['canceled_at'],
           price:          reservation['event_price'] + reservation['sheet_price'],
         }
       end
@@ -529,7 +532,10 @@ module Torb
 
     get '/admin/api/reports/sales', admin_login_required: true do
       sql = <<~SQL
-        SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num, s.price AS sheet_price, e.id AS event_id, e.price AS event_price 
+        SELECT r.id, r.user_id, r.reserved_at, r.event_id,
+          date_format(r.reserved_at, "%Y-%m-%dT%TZ") as sold_at,
+          IFNULL(date_format(r.reserved_at, "%Y-%m-%dT%TZ"), '') as canceled_at,
+          s.rank AS sheet_rank, s.num AS sheet_num, s.price AS sheet_price, e.id AS event_id, e.price AS event_price 
         FROM reservations r 
           INNER JOIN sheets s ON s.id = r.sheet_id 
           INNER JOIN events e ON e.id = r.event_id 
@@ -543,8 +549,8 @@ module Torb
           rank:           reservation['sheet_rank'],
           num:            reservation['sheet_num'],
           user_id:        reservation['user_id'],
-          sold_at:        reservation['reserved_at'].iso8601,
-          canceled_at:    reservation['canceled_at']&.iso8601 || '',
+          sold_at:        reservation['sold_at'],
+          canceled_at:    reservation['canceled_at'],
           price:          reservation['event_price'] + reservation['sheet_price'],
         }
       end
