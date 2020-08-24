@@ -86,7 +86,7 @@ module Torb
         sql =<<~SQL
           select * from sheets s 
             left outer join reservations r 
-              on r.sheet_id = s.id and event_id = ? and canceled_at is null 
+              on r.sheet_id = s.id and event_id = ? and canceled = 0
           order by `rank`, num
         SQL
         sheets = db.xquery(sql, event['id'])
@@ -177,7 +177,7 @@ module Torb
         sum(case when s.rank = 'B' then 1 else 0 end) as b_cnt,
         sum(case when s.rank = 'C' then 1 else 0 end) as c_cnt
         from events e
-        left outer join reservations r on r.event_id = e.id and r.canceled_at is null
+        left outer join reservations r on r.event_id = e.id and r.canceled = 0
         left outer join sheets s on s.id = r.sheet_id
         where public_fg = 1 group by e.id
         order by e.id asc
@@ -277,7 +277,7 @@ module Torb
                 sum(case when r.sheet_id <= 500 and r.sheet_id > 200 then 1 else 0 end) as b_cnt,
                 sum(case when r.sheet_id > 500 then 1 else 0 end) as c_cnt
                 from events e
-                left outer join reservations r on r.event_id = e.id and r.canceled_at is null
+                left outer join reservations r on r.event_id = e.id and r.canceled = 0
             where e.id in (select * from (select event_id from reservations where user_id = ? group by event_id ORDER BY MAX(IFNULL(canceled_at, reserved_at)) desc limit 5) as t)
             group by e.id
             order by e.id asc
@@ -385,7 +385,7 @@ module Torb
           halt_with_error 403, 'not_permitted'
         end
 
-        db.xquery('UPDATE reservations SET canceled_at = ? WHERE id = ?', Time.now.utc.strftime('%F %T.%6N'), reservation['id'])
+        db.xquery('UPDATE reservations SET canceled_at = ?, canceled = 1 WHERE id = ?', Time.now.utc.strftime('%F %T.%6N'), reservation['id'])
         db.query('COMMIT')
       rescue => e
         warn "rollback by: #{e}"
@@ -406,7 +406,7 @@ module Torb
         sum(case when r.sheet_id <= 500 and r.sheet_id > 200 then 1 else 0 end) as b_cnt,
         sum(case when r.sheet_id > 500 then 1 else 0 end) as c_cnt
         from events e
-        left outer join reservations r on r.event_id = e.id and r.canceled_at is null
+        left outer join reservations r on r.event_id = e.id and r.canceled = 0
         group by e.id
         order by e.id asc
         SQL
